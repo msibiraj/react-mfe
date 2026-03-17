@@ -220,6 +220,116 @@ Use this for: **values the Shell owns** that a child MFE needs to display.
 
 ---
 
+### ModuleFederationPlugin
+
+`ModuleFederationPlugin` is a built-in Webpack 5 plugin that enables separate JS bundles to share code and load components from each other at runtime.
+
+It generates two things:
+
+**On each remote** — a `remoteEntry.js` manifest that advertises what modules are exposed and handles version negotiation for shared packages:
+
+```js
+// products-mfe/webpack.config.js
+new ModuleFederationPlugin({
+  name: 'products',           // global variable: window.products
+  filename: 'remoteEntry.js', // the manifest file webpack generates
+  exposes: {
+    './ProductsMFE': './src/ProductsMFE',
+    './HeaderMFE':   './src/HeaderMFE',
+  },
+  shared: { react: { singleton: true } },
+})
+```
+
+**On the host (Shell)** — async loading code that fetches each remote's `remoteEntry.js` on startup, intercepts `import('products/ProductsMFE')` and routes it to the correct server, and ensures shared singletons are only loaded once:
+
+```js
+// shell-app/webpack.config.js
+new ModuleFederationPlugin({
+  name: 'shell',
+  remotes: {
+    products: 'products@http://localhost:3001/remoteEntry.js',
+    cart:     'cart@http://localhost:3002/remoteEntry.js',
+  },
+  shared: { react: { singleton: true } },
+})
+```
+
+Without it, the only alternatives are bundling everything together (no independent deploys), iframes (isolated but no shared state), or `<script>` globals (fragile, no module system).
+
+---
+
+### publicPath
+
+`publicPath` tells webpack the base URL to prepend to every chunk filename when generating references inside `remoteEntry.js`.
+
+```js
+// products-mfe/webpack.config.js
+output: {
+  publicPath: 'http://localhost:3001/',
+}
+```
+
+Without this, webpack generates relative chunk URLs. The Shell at `:3000` would resolve them against its own origin and get a 404:
+
+```
+// Without publicPath — wrong
+fetch('src_ProductsMFE_jsx.js')
+→ resolves to http://localhost:3000/src_ProductsMFE_jsx.js  ✗ file is on :3001
+
+// With publicPath — correct
+fetch('http://localhost:3001/src_ProductsMFE_jsx.js')       ✓
+```
+
+The Shell uses `publicPath: 'auto'` because its own chunks are always served from the same origin the browser is on. Remotes must use an explicit URL because their chunks live on a different server.
+
+In production, point `publicPath` to the CDN path where that MFE is deployed:
+
+```js
+output: { publicPath: 'https://cdn.company.com/products/' }
+```
+
+---
+
+### What `singleton: true` means
+
+A singleton means only **one instance** of that module exists across the entire app, no matter how many MFEs try to load it.
+
+**Without singleton** — each MFE bundles its own copy:
+
+```
+shell-app     → React instance A
+products-mfe  → React instance B
+cart-mfe      → React instance C
+```
+
+`<CartProvider>` is mounted using instance A. `ProductsMFE` calls `useCart()` using instance B. Different instances = context not found = crash, even though the provider IS mounted.
+
+**With `singleton: true`** — Module Federation negotiates at load time:
+
+```
+Shell loads    → "I have react@18.2, I'll be the owner"
+products-mfe   → "I need react@^18 → already loaded → reuse Shell's copy"
+cart-mfe       → "I need react@^18 → already loaded → reuse same copy"
+
+Result: all MFEs share one React instance → Context works across boundaries ✓
+```
+
+| | Without singleton | With singleton |
+|---|---|---|
+| Copies in memory | One per MFE | One total |
+| React Context works | No | Yes |
+| `useAuth()` / `useCart()` | Crashes | Works |
+| Bundle size | React duplicated | React loaded once |
+
+`requiredVersion` adds a warning if a remote brings an incompatible version:
+
+```js
+react: { singleton: true, requiredVersion: '^18.0.0' }
+```
+
+---
+
 ### Async bootstrap pattern
 
 Every app has a tiny `index.jsx` that does nothing but a dynamic import:
