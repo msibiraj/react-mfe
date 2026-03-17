@@ -1,0 +1,16 @@
+{
+  "name": "@company/shared",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "echo 'shared package — no dev server'"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  },
+  "exports": {
+    "@company/auth":      "./src/contexts/AuthContext.jsx",
+    "@company/cart":      "./src/contexts/CartContext.jsx",
+    "@company/event-bus": "./src/events/eventBus.js"
+  }
+}

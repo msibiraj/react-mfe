@@ -1,0 +1,25 @@
+{
+  "name": "shell-app",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "webpack serve",
+    "build": "webpack --mode production"
+  },
+  "dependencies": {
+    "@company/auth": "*",
+    "@company/cart": "*",
+    "@company/event-bus": "*",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^9.0.0",
+    "css-loader": "^7.1.4",
+    "html-webpack-plugin": "^5.0.0",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0",
+    "webpack-dev-server": "^4.0.0"
+  }
+}

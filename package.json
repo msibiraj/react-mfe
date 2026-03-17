@@ -1,0 +1,21 @@
+{
+  "name": "react-mfe-example",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "shared/auth",
+    "shared/cart",
+    "shared/event-bus",
+    "shell-app",
+    "products-mfe",
+    "cart-mfe",
+    "reco-mfe"
+  ],
+  "scripts": {
+    "start": "concurrently \"npm run start -w shared\" \"npm run start -w products-mfe\" \"npm run start -w cart-mfe\" \"npm run start -w reco-mfe\" \"npm run start -w shell-app\"",
+    "build": "npm run build -w shared && npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}
